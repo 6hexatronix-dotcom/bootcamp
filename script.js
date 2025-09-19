@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", function () {
         type: "music",
         title: "Favorite Album",
         src: "materials/music.m4a",
-        thumb: "materials/thumbM.pngg",
+        thumb: "materials/thumbM.png",
       },
       {
         type: "image",
