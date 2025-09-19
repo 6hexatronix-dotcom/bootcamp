@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DopaminoMeter</title>
+    <link rel="stylesheet" href="master.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container header-container">
+        <div class="logo"><span>🚀</span> DopaminoMeter</div>
+      </div>
+    </header>
+
+    <div class="container app-container">
+      <!-- Welcome Screen -->
+      <div class="screen welcome-screen active">
+        <h1>DopaminoMeter</h1>
+        <p>
+          A personalized mental health support system for astronauts during
+          long-duration space missions
+        </p>
+        <div class="access-warning">
+          <h3>Weekly Access Reminder</h3>
+          <p>
+            This application is designed to be accessed once per week as part of
+            your mental health routine.
+          </p>
+          <p id="last-access-date">Last access: Not yet recorded</p>
+        </div>
+        <button class="btn" id="start-btn">Begin Wellness Check</button>
+      </div>
+
+      <!-- Question Screen -->
+      <div class="screen question-screen">
+        <h2>Mental Health Assessment</h2>
+        <p>
+          Please answer the following questions honestly. Your responses will
+          help tailor your wellness experience.
+        </p>
+
+        <div class="question-container">
+          <div class="question" id="current-question">
+            How would you describe your overall mood this past week?
+          </div>
+          <div class="options">
+            <div class="option" data-value="1">Exceptionally positive</div>
+            <div class="option" data-value="2">Generally good</div>
+            <div class="option" data-value="4">Neutral</div>
+            <div class="option" data-value="6">Somewhat low</div>
+            <div class="option" data-value="8">Quite negative</div>
+            <div class="option" data-value="10">Extremely depressed</div>
+          </div>
+        </div>
+
+        <button class="btn" id="next-btn" disabled>Next Question</button>
+      </div>
+
+      <!-- Results Screen -->
+      <div class="screen results-screen">
+        <h2>Your Wellness Assessment</h2>
+        <p>
+          Based on your responses, here is your current mental wellness level:
+        </p>
+
+        <div class="level-indicator">
+          <div class="level level-1" data-level="1">1</div>
+          <div class="level level-2" data-level="2">2</div>
+          <div class="level level-3" data-level="3">3</div>
+          <div class="level level-4" data-level="4">4</div>
+          <div class="level level-5" data-level="5">5</div>
+          <div class="level level-6" data-level="6">6</div>
+          <div class="level level-7" data-level="7">7</div>
+          <div class="level level-8" data-level="8">8</div>
+          <div class="level level-9" data-level="9">9</div>
+          <div class="level level-10" data-level="10">10</div>
+        </div>
+
+        <div class="result-container">
+          <h3>Your Wellness Level: <span id="wellness-score">5</span>/10</h3>
+          <div class="depression-level" id="level-display">Moderate</div>
+          <p class="level-desc" id="level-description">
+            You're experiencing some emotional challenges but maintaining
+            overall functionality.
+          </p>
+        </div>
+
+        <button class="btn" id="view-media-btn">
+          View Personalized Content
+        </button>
+      </div>
+
+      <!-- Media Screen -->
+      <div class="screen media-screen">
+        <h2>Your Personalized Content</h2>
+        <p>Curated for your current wellness needs!</p>
+
+        <div class="media-player" id="media-player">
+          <div
+            id="player-placeholder"
+            style="padding: 40px; text-align: center; width: 1200px"
+          >
+            Select an item to view or listen
+          </div>
+        </div>
+
+        <div class="media-grid" id="media-grid">
+          <!-- Media items will be dynamically inserted here -->
+        </div>
+
+        <button class="btn btn-outline" id="back-to-start">
+          Return to Start
+        </button>
+      </div>
+    </div>
+
+    <footer>
+      <div class="container footer-content">
+        <div class="copyright">© 2025 Astronaut Wellness System</div>
+        <div class="copyright">Healing is not linear, but it is possible!</div>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

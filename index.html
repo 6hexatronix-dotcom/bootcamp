@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DopaminoMeter</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        overflow: hidden;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #0a0f1e;
+        color: #fff;
+        height: 100vh;
+        width: 100vw;
+      }
+
+      #container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      #roomCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(10, 15, 30, 0.95);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        transition: opacity 1s ease;
+      }
+
+      .loading-title {
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        background: linear-gradient(90deg, #8ec5fc, #e0c3fc);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        padding: 0 1rem;
+      }
+
+      .spinner {
+        width: 60px;
+        height: 60px;
+        border: 5px solid rgba(142, 197, 252, 0.3);
+        border-radius: 50%;
+        border-top-color: #8ec5fc;
+        animation: spin 1s linear infinite;
+        margin-bottom: 2rem;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .start-button {
+        padding: 15px 40px;
+        background: linear-gradient(90deg, #8ec5fc, #e0c3fc);
+        border: none;
+        border-radius: 30px;
+        color: #0a0f1e;
+        font-size: 1.2rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.3s, box-shadow 0.3s;
+        box-shadow: 0 5px 15px rgba(142, 197, 252, 0.4);
+      }
+
+      .start-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(142, 197, 252, 0.6);
+      }
+
+      .hint {
+        position: absolute;
+        bottom: 20px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+        pointer-events: none;
+        transition: opacity 0.5s ease;
+      }
+
+      #laptop-screen {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0);
+        width: 90vw;
+        height: 90vh;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+        z-index: 200;
+        transition: transform 0.8s ease;
+        overflow: hidden;
+      }
+
+      #laptop-screen.active {
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      #screen-content {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+
+      #close-btn {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        font-size: 24px;
+        color: #333;
+        cursor: pointer;
+        z-index: 201;
+      }
+
+      .instructions {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 15px;
+        border-radius: 10px;
+        max-width: 250px;
+        backdrop-filter: blur(5px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .instructions h3 {
+        margin-bottom: 10px;
+        color: #8ec5fc;
+      }
+
+      .instructions p {
+        margin: 5px 0;
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .instructions kbd {
+        display: inline-block;
+        padding: 2px 6px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        font-family: monospace;
+        font-size: 0.8rem;
+      }
+
+      #laptop-message {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 100;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <canvas id="roomCanvas"></canvas>
+
+      <div class="loading-overlay" id="loadingOverlay">
+        <h1 class="loading-title">3d Room Experience</h1>
+        <div class="spinner"></div>
+        <button class="start-button" id="startButton">
+          Enter Relaxation Room
+        </button>
+        <p class="hint">
+          You'll need to allow pointer lock to navigate the room
+        </p>
+      </div>
+
+      <div id="laptop-screen">
+        <div id="close-btn">×</div>
+        <iframe id="screen-content" src="about:blank"></iframe>
+      </div>
+
+      <div class="instructions" id="instructions">
+        <h3>Controls</h3>
+        <p><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Move around</p>
+        <p><kbd>Mouse</kbd> Look around</p>
+        <p><kbd>Shift</kbd> Move faster</p>
+        <p><kbd>E</kbd> Interact with objects</p>
+        <p><kbd>ESC</kbd> Exit controls</p>
+      </div>
+
+      <div id="laptop-message">Press E to use the laptop</div>
+    </div>
+
+    <!-- Three.js and additional libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/libs/stats.min.js"></script>
+
+    <script>
+      // Main application
+      document.addEventListener("DOMContentLoaded", function () {
+        // Get DOM elements
+        const canvas = document.getElementById("roomCanvas");
+        const loadingOverlay = document.getElementById("loadingOverlay");
+        const startButton = document.getElementById("startButton");
+        const laptopScreen = document.getElementById("laptop-screen");
+        const closeButton = document.getElementById("close-btn");
+        const screenIframe = document.getElementById("screen-content");
+        const instructions = document.getElementById("instructions");
+        const laptopMessage = document.getElementById("laptop-message");
+
+        // Variables for the scene
+        let scene, camera, renderer, controls;
+        let laptop,
+          laptopOpen = false;
+        let objectsToInteract = [];
+        let objects = [];
+        let velocityY = 0;
+        let isGrounded = false;
+        const gravity = 0.05;
+
+        // Movement state
+        const moveState = {
+          forward: false,
+          backward: false,
+          left: false,
+          right: false,
+          jump: false,
+          fast: false,
+        };
+
+        // Initialize Three.js
+        function init() {
+          // Set up scene
+          scene = new THREE.Scene();
+          scene.background = new THREE.Color(0x0a0f1e);
+          scene.fog = new THREE.Fog(0x0a0f1e, 5, 15);
+
+          // Set up camera
+          camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+          );
+          camera.position.set(0, 1.6, 3); // Start position
+
+          // Set up renderer
+          renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true,
+          });
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          renderer.shadowMap.enabled = true;
+          renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+          renderer.outputEncoding = THREE.sRGBEncoding;
+
+          // Add lighting
+          addLighting();
+
+          // Create room with furniture
+          createRoom();
+
+          // Create laptop
+          createLaptop();
+
+          // Set up controls
+          setupControls();
+
+          // Handle window resize
+          window.addEventListener("resize", onWindowResize, false);
+
+          // Setup close button event listener
+          closeButton.addEventListener("click", closeLaptop);
+
+          // Start animation loop
+          animate();
+        }
+
+        // Add lighting to the scene
+        function addLighting() {
+          // Ambient light
+          const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+          scene.add(ambientLight);
+
+          // Directional light (like sun)
+          const directionalLight = new THREE.DirectionalLight(0xfffaf0, 0.8);
+          directionalLight.position.set(5, 10, 7.5);
+          directionalLight.castShadow = true;
+          directionalLight.shadow.mapSize.width = 1024;
+          directionalLight.shadow.mapSize.height = 1024;
+          directionalLight.shadow.camera.near = 0.5;
+          directionalLight.shadow.camera.far = 20;
+          directionalLight.shadow.camera.left = -10;
+          directionalLight.shadow.camera.right = 10;
+          directionalLight.shadow.camera.top = 10;
+          directionalLight.shadow.camera.bottom = -10;
+          scene.add(directionalLight);
+
+          // Soft blue point light
+          const pointLight = new THREE.PointLight(0x8ec5fc, 0.7, 20);
+          pointLight.position.set(0, 3, 0);
+          pointLight.castShadow = true;
+          scene.add(pointLight);
+
+          // Warm yellowish light
+          const pointLight2 = new THREE.PointLight(0xfce38a, 0.5, 15);
+          pointLight2.position.set(-3, 2, -3);
+          pointLight2.castShadow = true;
+          scene.add(pointLight2);
+
+          // Add a spotlight specifically for the laptop area
+          const laptopLight = new THREE.SpotLight(0xffffff, 0.8);
+          laptopLight.position.set(0, 4, -3);
+          laptopLight.target.position.set(0, 1.2, -3);
+          laptopLight.angle = Math.PI / 6;
+          laptopLight.penumbra = 0.5;
+          laptopLight.decay = 2;
+          laptopLight.distance = 10;
+          laptopLight.castShadow = true;
+          scene.add(laptopLight);
+          scene.add(laptopLight.target);
+        }
+
+        // Create the room with furniture
+        function createRoom() {
+          const roomWidth = 12;
+          const roomHeight = 6;
+          const roomDepth = 12;
+
+          // Floor
+          const floorGeometry = new THREE.PlaneGeometry(roomWidth, roomDepth);
+          const floorMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3d348b,
+            roughness: 0.8,
+            metalness: 0.2,
+          });
+          const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+          floor.rotation.x = -Math.PI / 2;
+          floor.receiveShadow = true;
+          scene.add(floor);
+
+          // Add floor rug
+          const rugGeometry = new THREE.CylinderGeometry(2, 2, 0.05, 32);
+          const rugMaterial = new THREE.MeshStandardMaterial({
+            color: 0x7678ed,
+            roughness: 0.9,
+            metalness: 0.1,
+          });
+          const rug = new THREE.Mesh(rugGeometry, rugMaterial);
+          rug.position.y = 0.025;
+          rug.receiveShadow = true;
+          scene.add(rug);
+
+          // Ceiling
+          const ceilingGeometry = new THREE.PlaneGeometry(roomWidth, roomDepth);
+          const ceilingMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1e1a5e,
+            roughness: 0.7,
+            metalness: 0.3,
+          });
+          const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+          ceiling.rotation.x = Math.PI / 2;
+          ceiling.position.y = roomHeight;
+          ceiling.receiveShadow = true;
+          scene.add(ceiling);
+
+          // Walls
+          const wallMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3d348b,
+            roughness: 0.5,
+            metalness: 0.5,
+          });
+
+          // Back wall
+          const backWallGeometry = new THREE.PlaneGeometry(
+            roomWidth,
+            roomHeight
+          );
+          const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+          backWall.position.z = -roomDepth / 2;
+          backWall.position.y = roomHeight / 2;
+          backWall.receiveShadow = true;
+          scene.add(backWall);
+
+          // Right wall
+          const rightWallGeometry = new THREE.PlaneGeometry(
+            roomDepth,
+            roomHeight
+          );
+          const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
+          rightWall.rotation.y = Math.PI / 2;
+          rightWall.position.x = roomWidth / 2;
+          rightWall.position.y = roomHeight / 2;
+          rightWall.receiveShadow = true;
+          scene.add(rightWall);
+
+          // Left wall
+          const leftWallGeometry = new THREE.PlaneGeometry(
+            roomDepth,
+            roomHeight
+          );
+          const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+          leftWall.rotation.y = Math.PI / 2;
+          leftWall.position.x = -roomWidth / 2;
+          leftWall.position.y = roomHeight / 2;
+          leftWall.receiveShadow = true;
+          scene.add(leftWall);
+
+          // Front wall (with doorway)
+          const frontWallGroup = new THREE.Group();
+
+          // Left part of front wall
+          const frontWallLeftGeometry = new THREE.BoxGeometry(
+            roomWidth / 2 - 1.5,
+            roomHeight,
+            0.2
+          );
+          const frontWallLeft = new THREE.Mesh(
+            frontWallLeftGeometry,
+            wallMaterial
+          );
+          frontWallLeft.position.x = -roomWidth / 4 - 0.75;
+          frontWallLeft.position.y = roomHeight / 2;
+          frontWallLeft.position.z = roomDepth / 2;
+          frontWallLeft.castShadow = true;
+          frontWallLeft.receiveShadow = true;
+          frontWallGroup.add(frontWallLeft);
+
+          // Right part of front wall
+          const frontWallRightGeometry = new THREE.BoxGeometry(
+            roomWidth / 2 - 1.5,
+            roomHeight,
+            0.2
+          );
+          const frontWallRight = new THREE.Mesh(
+            frontWallRightGeometry,
+            wallMaterial
+          );
+          frontWallRight.position.x = roomWidth / 4 + 0.75;
+          frontWallRight.position.y = roomHeight / 2;
+          frontWallRight.position.z = roomDepth / 2;
+          frontWallRight.castShadow = true;
+          frontWallRight.receiveShadow = true;
+          frontWallGroup.add(frontWallRight);
+
+          // Top part of front wall
+          const frontWallTopGeometry = new THREE.BoxGeometry(
+            3,
+            roomHeight / 4,
+            0.2
+          );
+          const frontWallTop = new THREE.Mesh(
+            frontWallTopGeometry,
+            wallMaterial
+          );
+          frontWallTop.position.y = roomHeight - roomHeight / 8;
+          frontWallTop.position.z = roomDepth / 2;
+          frontWallTop.castShadow = true;
+          frontWallTop.receiveShadow = true;
+          frontWallGroup.add(frontWallTop);
+
+          scene.add(frontWallGroup);
+
+          // Add furniture
+          createFurniture();
+
+          // Add decorative elements
+          addDecorations();
+        }
+
+        // Create furniture for the room
+        function createFurniture() {
+          // Table
+          const tableTopGeometry = new THREE.BoxGeometry(2.5, 0.1, 1.2);
+          const tableTopMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8b4513,
+            roughness: 0.8,
+            metalness: 0.2,
+          });
+          const tableTop = new THREE.Mesh(tableTopGeometry, tableTopMaterial);
+          tableTop.position.set(0, 1.1, -3);
+          tableTop.castShadow = true;
+          tableTop.receiveShadow = true;
+          scene.add(tableTop);
+
+          const tableLegGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+          const tableLegMaterial = new THREE.MeshStandardMaterial({
+            color: 0x5d4037,
+            roughness: 0.9,
+          });
+
+          const tableLegPositions = [
+            [1.2, 0.6, -2.95],
+            [-1.2, 0.6, -2.95],
+            [1.2, 0.6, -3.05],
+            [-1.2, 0.6, -3.05],
+          ];
+
+          tableLegPositions.forEach((pos) => {
+            const tableLeg = new THREE.Mesh(tableLegGeometry, tableLegMaterial);
+            tableLeg.position.set(pos[0], pos[1], pos[2]);
+            tableLeg.castShadow = true;
+            tableLeg.receiveShadow = true;
+            scene.add(tableLeg);
+          });
+
+          // Comfortable chair
+          const chairSeatGeometry = new THREE.BoxGeometry(0.7, 0.1, 0.7);
+          const chairSeatMaterial = new THREE.MeshStandardMaterial({
+            color: 0x6d4c41,
+            roughness: 0.8,
+          });
+          const chairSeat = new THREE.Mesh(
+            chairSeatGeometry,
+            chairSeatMaterial
+          );
+          chairSeat.position.set(1.8, 0.7, -2.8);
+          chairSeat.castShadow = true;
+          chairSeat.receiveShadow = true;
+          scene.add(chairSeat);
+
+          const chairBackGeometry = new THREE.BoxGeometry(0.7, 0.8, 0.1);
+          const chairBack = new THREE.Mesh(
+            chairBackGeometry,
+            chairSeatMaterial
+          );
+          chairBack.position.set(1.8, 1.1, -3.15);
+          chairBack.castShadow = true;
+          chairBack.receiveShadow = true;
+          scene.add(chairBack);
+
+          const chairLegGeometry = new THREE.CylinderGeometry(
+            0.05,
+            0.05,
+            0.7,
+            16
+          );
+          const chairLegMaterial = new THREE.MeshStandardMaterial({
+            color: 0x5d4037,
+          });
+
+          const chairLegPositions = [
+            [1.5, 0.35, -2.5],
+            [2.1, 0.35, -2.5],
+            [1.5, 0.35, -3.1],
+            [2.1, 0.35, -3.1],
+          ];
+
+          chairLegPositions.forEach((pos) => {
+            const chairLeg = new THREE.Mesh(chairLegGeometry, chairLegMaterial);
+            chairLeg.position.set(pos[0], pos[1], pos[2]);
+            chairLeg.castShadow = true;
+            chairLeg.receiveShadow = true;
+            scene.add(chairLeg);
+          });
+
+          // Bookshelf
+          const shelfGeometry = new THREE.BoxGeometry(2, 0.05, 1);
+          const shelfMaterial = new THREE.MeshStandardMaterial({
+            color: 0x5d4037,
+          });
+
+          for (let i = 0; i < 4; i++) {
+            const shelf = new THREE.Mesh(shelfGeometry, shelfMaterial);
+            shelf.position.set(-3, 1 + i * 0.8, 2);
+            shelf.castShadow = true;
+            shelf.receiveShadow = true;
+            scene.add(shelf);
+
+            // Add some books
+            for (let j = 0; j < 5; j++) {
+              const bookHeight = 0.2 + Math.random() * 0.2;
+              const bookWidth = 0.1 + Math.random() * 0.1;
+              const bookDepth = 0.7 + Math.random() * 0.2;
+
+              const bookGeometry = new THREE.BoxGeometry(
+                bookWidth,
+                bookHeight,
+                bookDepth
+              );
+              const bookMaterial = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(
+                  Math.random(),
+                  Math.random(),
+                  Math.random()
+                ),
+              });
+
+              const book = new THREE.Mesh(bookGeometry, bookMaterial);
+              book.position.set(
+                -3.45 + j * 0.2,
+                0.9 + i * 0.8 + bookHeight / 2,
+                2
+              );
+              book.castShadow = true;
+              book.receiveShadow = true;
+              scene.add(book);
+            }
+          }
+
+          // Bookshelf sides
+          const shelfSideGeometry = new THREE.BoxGeometry(0.1, 3.2, 1);
+          const leftShelfSide = new THREE.Mesh(
+            shelfSideGeometry,
+            shelfMaterial
+          );
+          leftShelfSide.position.set(-3.95, 1.6, 2);
+          leftShelfSide.castShadow = true;
+          leftShelfSide.receiveShadow = true;
+          scene.add(leftShelfSide);
+
+          const rightShelfSide = new THREE.Mesh(
+            shelfSideGeometry,
+            shelfMaterial
+          );
+          rightShelfSide.position.set(-2.05, 1.6, 2);
+          rightShelfSide.castShadow = true;
+          rightShelfSide.receiveShadow = true;
+          scene.add(rightShelfSide);
+        }
+
+        // Add decorative elements to the room
+        function addDecorations() {
+          // Plants
+          const plantStemGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+          const plantStemMaterial = new THREE.MeshStandardMaterial({
+            color: 0x4caf50,
+          });
+
+          const plantStem = new THREE.Mesh(
+            plantStemGeometry,
+            plantStemMaterial
+          );
+          plantStem.position.set(3, 0.5, 3);
+          plantStem.castShadow = true;
+          plantStem.receiveShadow = true;
+          scene.add(plantStem);
+
+          const plantLeafGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+          const plantLeafMaterial = new THREE.MeshStandardMaterial({
+            color: 0x66bb6a,
+          });
+
+          for (let i = 0; i < 3; i++) {
+            const plantLeaf = new THREE.Mesh(
+              plantLeafGeometry,
+              plantLeafMaterial
+            );
+            plantLeaf.position.set(3, 1 + i * 0.4, 3);
+            plantLeaf.scale.set(1, 0.5, 1);
+            plantLeaf.castShadow = true;
+            plantLeaf.receiveShadow = true;
+            scene.add(plantLeaf);
+          }
+
+          // Wall art
+          const frameGeometry = new THREE.BoxGeometry(1.3, 1, 0.01);
+          const frameMaterial = new THREE.MeshStandardMaterial({
+            color: "black",
+          });
+
+          const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+          frame.position.set(0, 1.7, -3.5);
+          frame.castShadow = true;
+          frame.receiveShadow = true;
+          scene.add(frame);
+
+          const paintingGeometry = new THREE.PlaneGeometry(1.4, 0.9);
+          const paintingMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3d348b,
+            roughness: 0.7,
+            metalness: 0.3,
+          });
+
+          const painting = new THREE.Mesh(paintingGeometry, paintingMaterial);
+          painting.position.set(0, 2.5, -5.99);
+          painting.castShadow = true;
+          painting.receiveShadow = true;
+          scene.add(painting);
+
+          // Soft lighting
+          const lampGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+          const lampMaterial = new THREE.MeshStandardMaterial({
+            color: 0xfce38a,
+            emissive: 0xfce38a,
+            emissiveIntensity: 0.5,
+          });
+
+          const lamp = new THREE.Mesh(lampGeometry, lampMaterial);
+          lamp.position.set(-3, 3, -3);
+          lamp.castShadow = true;
+          scene.add(lamp);
+
+          // Lamp light
+          const lampLight = new THREE.PointLight(0xfce38a, 0.7, 8);
+          lampLight.position.copy(lamp.position);
+          scene.add(lampLight);
+        }
+
+        // Create laptop function
+        function createLaptop() {
+          // Laptop base
+          const baseGeometry = new THREE.BoxGeometry(1.5, 0.1, 1);
+          const baseMaterial = new THREE.MeshStandardMaterial({
+            color: 0x444444,
+            metalness: 0.9,
+            roughness: 0.1,
+            emissive: 0x111111,
+          });
+          const base = new THREE.Mesh(baseGeometry, baseMaterial);
+          base.position.set(0, 1.2, -3); // On the table
+          base.rotation.y = Math.PI;
+          base.castShadow = true;
+          base.receiveShadow = true;
+          scene.add(base);
+
+          // Laptop screen
+          const screenGeometry = new THREE.BoxGeometry(1.4, 0.9, 0.05);
+          const screenMaterial = new THREE.MeshStandardMaterial({
+            color: 0x222222,
+            metalness: 0.8,
+            roughness: 0.2,
+          });
+          const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+          screen.position.set(0, 1.65, -3); // On the table
+          screen.rotation.y = Math.PI;
+          screen.castShadow = true;
+          screen.receiveShadow = true;
+
+          // Screen content - make it more visible
+          const screenContentGeometry = new THREE.PlaneGeometry(1.3, 0.8);
+          const screenContentMaterial = new THREE.MeshBasicMaterial({
+            color: 0x0078d7,
+            transparent: false,
+            opacity: 1.0,
+          });
+          const screenContent = new THREE.Mesh(
+            screenContentGeometry,
+            screenContentMaterial
+          );
+          screenContent.position.z = 0.03;
+          screen.add(screenContent);
+
+          // Add keyboard details to make it more recognizable
+          const keyGeometry = new THREE.BoxGeometry(0.1, 0.02, 0.1);
+          const keyMaterial = new THREE.MeshStandardMaterial({
+            color: 0x000000,
+            metalness: 0.5,
+            roughness: 0.5,
+          });
+
+          // Add some keys to the base
+          for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 10; j++) {
+              const key = new THREE.Mesh(keyGeometry, keyMaterial);
+              key.position.set(-0.6 + j * 0.13, 1.205, -3 + i * 0.08);
+              scene.add(key);
+            }
+          }
+
+          // Add a trackpad
+          const trackpadGeometry = new THREE.BoxGeometry(0.4, 0.01, 0.3);
+          const trackpadMaterial = new THREE.MeshStandardMaterial({
+            color: 0x222222,
+            metalness: 0.3,
+            roughness: 0.7,
+          });
+          const trackpad = new THREE.Mesh(trackpadGeometry, trackpadMaterial);
+          trackpad.position.set(0.9, 1.205, -2.8);
+          scene.add(trackpad);
+
+          scene.add(screen);
+
+          // Make laptop interactive
+          laptop = new THREE.Group();
+          laptop.add(base);
+          laptop.add(screen);
+          laptop.userData = { isLaptop: true };
+          objects.push(laptop);
+
+          // Add to interactive objects
+          objectsToInteract.push({
+            object: laptop,
+            distance: 2,
+            action: function () {
+              openLaptop();
+            },
+          });
+        }
+
+        // Open laptop function
+        function openLaptop() {
+          laptopScreen.classList.add("active");
+          screenIframe.src = "survey.html"; // You can change this to any URL
+          controls.unlock();
+        }
+
+        // Close laptop function
+        function closeLaptop() {
+          laptopScreen.classList.remove("active");
+          screenIframe.src = "about:blank";
+          controls.lock();
+        }
+
+        // Set up pointer lock controls
+        function setupControls() {
+          controls = new THREE.PointerLockControls(camera, document.body);
+
+          // Add event listener for the start button
+          startButton.addEventListener(
+            "click",
+            function () {
+              controls.lock();
+            },
+            false
+          );
+
+          controls.addEventListener("lock", function () {
+            loadingOverlay.style.opacity = "0";
+            setTimeout(() => {
+              loadingOverlay.style.display = "none";
+            }, 500);
+          });
+
+          controls.addEventListener("unlock", function () {
+            loadingOverlay.style.display = "flex";
+            setTimeout(() => {
+              loadingOverlay.style.opacity = "1";
+            }, 10);
+          });
+
+          // Keyboard event listeners
+          document.addEventListener("keydown", onKeyDown, false);
+          document.addEventListener("keyup", onKeyUp, false);
+
+          // Interaction key
+          document.addEventListener("keydown", onInteractionKey, false);
+        }
+
+        // Handle key down events
+        function onKeyDown(event) {
+          if (!controls.isLocked) return;
+
+          switch (event.code) {
+            case "KeyW":
+              moveState.forward = true;
+              break;
+            case "KeyS":
+              moveState.backward = true;
+              break;
+            case "KeyA":
+              moveState.left = true;
+              break;
+            case "KeyD":
+              moveState.right = true;
+              break;
+            case "ShiftLeft":
+            case "ShiftRight":
+              moveState.fast = true;
+              break;
+          }
+        }
+
+        // Handle key up events
+        function onKeyUp(event) {
+          switch (event.code) {
+            case "KeyW":
+              moveState.forward = false;
+              break;
+            case "KeyS":
+              moveState.backward = false;
+              break;
+            case "KeyA":
+              moveState.left = false;
+              break;
+            case "KeyD":
+              moveState.right = false;
+              break;
+            case "ShiftLeft":
+            case "ShiftRight":
+              moveState.fast = false;
+              break;
+          }
+        }
+
+        // Handle interaction key
+        function onInteractionKey(event) {
+          if (event.code === "KeyE" && controls.isLocked) {
+            checkForInteractions();
+          }
+
+          if (event.code === "Escape") {
+            closeLaptop();
+          }
+        }
+
+        // Check for nearby objects to interact with
+        function checkForInteractions() {
+          const cameraPosition = camera.position;
+
+          for (const interactiveObject of objectsToInteract) {
+            const objectPosition = new THREE.Vector3();
+            interactiveObject.object.getWorldPosition(objectPosition);
+
+            const distance = cameraPosition.distanceTo(objectPosition);
+
+            if (distance <= interactiveObject.distance) {
+              interactiveObject.action();
+              break;
+            }
+          }
+        }
+
+        function onWindowResize() {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Animation loop
+        function animate() {
+          requestAnimationFrame(animate);
+
+          if (controls.isLocked) {
+            const delta = 0.016; // Assuming 60fps
+            const speed = moveState.fast ? 5 : 2;
+
+            // Handle movement
+            if (moveState.forward) {
+              controls.moveForward(speed * delta);
+            }
+            if (moveState.backward) {
+              controls.moveForward(-speed * delta);
+            }
+            if (moveState.left) {
+              controls.moveRight(-speed * delta);
+            }
+            if (moveState.right) {
+              controls.moveRight(speed * delta);
+            }
+
+            // Apply gravity and jumping
+            camera.position.y += velocityY;
+            velocityY -= gravity;
+
+            // Check if on ground
+            if (camera.position.y <= 1.6) {
+              camera.position.y = 1.6;
+              velocityY = 0;
+              isGrounded = true;
+            }
+
+            // Check for laptop interaction
+            checkLaptopInteraction();
+          }
+
+          renderer.render(scene, camera);
+        }
+
+        // Check if user is near the laptop
+        function checkLaptopInteraction() {
+          if (!laptop || !camera) return;
+
+          const distance = camera.position.distanceTo(laptop.position);
+
+          if (distance < 2.5) {
+            laptopMessage.style.display = "block";
+
+            // Listen for E key press
+            document.addEventListener("keydown", function onKeyPress(e) {
+              if (e.key === "e" || e.key === "E") {
+                openLaptop();
+                document.removeEventListener("keydown", onKeyPress);
+              }
+            });
+          } else {
+            laptopMessage.style.display = "none";
+          }
+        }
+
+        // Initialize the application
+        init();
+      });
+    </script>
+  </body>
+</html>
